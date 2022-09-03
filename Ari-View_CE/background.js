@@ -37,6 +37,22 @@ function reDrawPage() {
   ytString = ytString + "<br/><br/><span style='color:green;'>Ari-View CE v1.3</span><br/><br/><span style='color:green;'>=_=</span><br/>"
   document.body.innerHTML = ytString;
 
+  const iDB = window.indexedDB;
+
+  if (!iDB) {
+    alert('Indexed DB is not supported');
+  } else {
+    let db;
+    const request = iDB.open("AriViewCE", 1);
+
+    request.onupgradeneeded =(e)=> {
+      db = e.target.result;
+      db.createObjectStore('history', {keyPath: 'timestamp'});
+      request.onerror =(e)=> alert('failed');
+      request.onsuccess =(e)=> db = request.result;
+    }
+  }
+
   ytCode.map( elem => {
     document.getElementById(elem.code).onclick = function() {
       if (document.getElementById('cbYtFullScreen').checked) {
@@ -51,6 +67,9 @@ function reDrawPage() {
         document.getElementById("ytFullLink").innerText = ytFullLinkString;
         navigator.clipboard.writeText(ytFullLinkString);
       }
+      const ytTitle = document.getElementById(elem.code).nextSibling.nextSibling.innerHTML;
+      const ytDesc = document.getElementById(elem.code).nextSibling.nextSibling.nextSibling.nextSibling.innerHTML;
+      writeHistory(elem.code, ytTitle, ytDesc);
     }
   });
 
@@ -68,6 +87,30 @@ function reDrawPage() {
         document.getElementById("ytFullLink").innerText = ytFullLinkString;
         navigator.clipboard.writeText(ytFullLinkString);
       }
+
+      writeHistory(strYtCode, "", "");
+    }
+  }
+
+  function writeHistory(ytCode, ytTitle, ytDesc) {
+    const request = iDB.open('AriViewCE', 1);
+    request.onerror = function(e) {
+      alert('DataBase error', e.target.errorCode);
+    }
+    request.onsuccess = function(e) {
+      let db = e.target.result;
+      const transaction = db.transaction(['history'], 'readwrite');
+
+      transaction.oncomplete = function (e) {
+        console.log('success');
+      }
+      transaction.onerror = function (e) {
+        console.log('fail');
+      }
+
+      const objStore = transaction.objectStore('history');
+      const request = objStore.add({"timestamp":Date.now(), "code":ytCode, "title":ytTitle, "desc":ytDesc});
+      request.onsuccess =(e)=> console.log(e.target.result);
     }
   }
 
